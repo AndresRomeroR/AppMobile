@@ -5,7 +5,10 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.List
@@ -42,7 +45,6 @@ class MainActivity : ComponentActivity() {
 
                 var destino by remember { mutableStateOf(Destino.HABITOS) }
 
-                /* ---------- Usuario reactivo ---------- */
                 val usuarioState: MutableState<Usuario> = remember { mutableStateOf(Usuario()) }
 
                 val habitos: SnapshotStateList<Habito> = remember {
@@ -179,7 +181,54 @@ class MainActivity : ComponentActivity() {
                     }
 
                 } else {
-                    PantallaAgregarHabito { estaLogueado = true }
+                    var usuario by remember { mutableStateOf("") }  // <--- estado para el input
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 24.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .padding(top = 48.dp)
+                        ) {
+                            Image(
+                                painter = painterResource(id = R.drawable.logo),
+                                contentDescription = "Logo",
+                                modifier = Modifier
+                                    .sizeIn(maxWidth = 200.dp, maxHeight = 200.dp)
+                            )
+                        }
+
+                        Column(
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .verticalScroll(rememberScrollState())
+                                .padding(vertical = 24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "Iniciar sesión",
+                                style = MaterialTheme.typography.headlineSmall
+                            )
+                            Spacer(Modifier.height(24.dp))
+                            TextField(
+                                value = usuario,
+                                onValueChange = { usuario = it },  // <--- actualiza el estado
+                                placeholder = { Text("Usuario") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Spacer(Modifier.height(24.dp))
+                            Button(
+                                onClick = { if (usuario.isNotBlank()) estaLogueado = true },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Ingresar")
+                            }
+                        }
+                    }
                 }
             }
         }
