@@ -12,6 +12,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -28,6 +29,7 @@ import com.example.appsofware.data.*
 import com.example.appsofware.ui.*
 import com.example.appsofware.ui.theme.AppSofwareTheme
 import kotlinx.coroutines.launch
+import kotlin.random.Random
 
 class MainActivity : ComponentActivity() {
 
@@ -39,38 +41,56 @@ class MainActivity : ComponentActivity() {
         setContent {
             AppSofwareTheme {
 
-                var estaLogueado by rememberSaveable { mutableStateOf(false) }
-
-                val drawerState = rememberDrawerState(DrawerValue.Closed)
-                val scope       = rememberCoroutineScope()
-
-                var destino by rememberSaveable { mutableStateOf(Destino.HABITOS) }
-
-                val usuarioState: MutableState<Usuario> = remember { mutableStateOf(Usuario()) }
-
-                val habitos: SnapshotStateList<Habito> = remember {
-                    mutableStateListOf(
-                        Habito(1, "Leer 10 minutos"),
-                        Habito(2, "Ejercicio diario"),
-                        Habito(3, "Tomar agua")
+                /* ───── Colecciones por usuario ───── */
+                val allowedUsers  = remember { mutableStateListOf("admin") }
+                val userHabitos   = remember {
+                    mutableStateMapOf(
+                        "admin" to mutableStateListOf(
+                            Habito(1, "Leer 10 minutos"),
+                            Habito(2, "Ejercicio diario"),
+                            Habito(3, "Tomar agua")
+                        )
                     )
                 }
-                val historial = remember { mutableStateListOf<HistorialEntry>() }
+                val userHistorial = remember { mutableStateMapOf<String, SnapshotStateList<HistorialEntry>>() }
 
-                var mostrarDialogo by remember { mutableStateOf(false) }
-                var nuevoNombre   by remember { mutableStateOf("") }
+                /* ─────  PERFIL (nombre, foto, etc.)  ───── */
+                val userProfiles  = remember {
+                    mutableStateMapOf(
+                        "admin" to Usuario(
+                            nombre   = "admin",
+                            imageUrl = "https://randomuser.me/api/portraits/women/2.jpg"
+                        )
+                    )
+                }
+
+                /* ───── Estado global de sesión ───── */
+                var estaLogueado by rememberSaveable { mutableStateOf(false) }
+                var currentUser  by rememberSaveable { mutableStateOf("") }
+                var destino      by rememberSaveable { mutableStateOf(Destino.HABITOS) }
+
+                /* ───── Auxiliares UI ───── */
+                val drawerState  = rememberDrawerState(DrawerValue.Closed)
+                val scope        = rememberCoroutineScope()
+                val usuarioState = remember { mutableStateOf(Usuario()) }
+
+                /* Referencias a listas del usuario activo */
+                var habitos   by remember { mutableStateOf(mutableStateListOf<Habito>()) }
+                var historial by remember { mutableStateOf(mutableStateListOf<HistorialEntry>()) }
+
+                /* Dialogo hábito */
+                var showAddHabitDialog by remember { mutableStateOf(false) }
+                var newHabitName       by remember { mutableStateOf("") }
 
                 fun agregarAHistorial(h: Habito) {
                     if (h.completado) {
                         historial.add(
-                            HistorialEntry(
-                                id   = historial.size + 1,
-                                nombre = h.nombre
-                            )
+                            HistorialEntry(id = historial.size + 1, nombre = h.nombre)
                         )
                     }
                 }
 
+                /* ════════════════════════════════════ */
                 if (estaLogueado) {
 
                     ModalNavigationDrawer(
@@ -78,97 +98,119 @@ class MainActivity : ComponentActivity() {
                         drawerContent = {
                             ModalDrawerSheet {
                                 Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
                                     modifier = Modifier
-                                        .fillMaxWidth()
+                                        .fillMaxSize()
                                         .padding(vertical = 24.dp)
                                 ) {
-                                    AsyncImage(
-                                        model = usuarioState.value.imageUrl,
-                                        placeholder = painterResource(R.drawable.ic_person),
-                                        error       = painterResource(R.drawable.ic_person),
-                                        contentDescription = null,
-                                        modifier = Modifier
-                                            .size(96.dp)
-                                            .clip(RectangleShape)
-                                    )
-                                    Spacer(Modifier.height(12.dp))
-                                    Text(
-                                        usuarioState.value.nombre.ifBlank { "Invitado" },
-                                        style = MaterialTheme.typography.titleMedium
+                                    /* ─── Parte superior ─── */
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        AsyncImage(
+                                            model = usuarioState.value.imageUrl,
+                                            placeholder = painterResource(R.drawable.ic_person),
+                                            error       = painterResource(R.drawable.ic_person),
+                                            contentDescription = null,
+                                            modifier = Modifier
+                                                .size(96.dp)
+                                                .clip(RectangleShape)
+                                        )
+                                        Spacer(Modifier.height(12.dp))
+                                        Text(
+                                            usuarioState.value.nombre.ifBlank { "Invitado" },
+                                            style = MaterialTheme.typography.titleMedium
+                                        )
+                                        Spacer(Modifier.height(24.dp))
+
+                                        NavigationDrawerItem(
+                                            label = { Text("Hábitos") },
+                                            selected = destino == Destino.HABITOS,
+                                            onClick = {
+                                                destino = Destino.HABITOS
+                                                scope.launch { drawerState.close() }
+                                            },
+                                            icon = { Icon(Icons.Filled.List, null) }
+                                        )
+                                        NavigationDrawerItem(
+                                            label = { Text("Historial") },
+                                            selected = destino == Destino.HISTORIAL,
+                                            onClick = {
+                                                destino = Destino.HISTORIAL
+                                                scope.launch { drawerState.close() }
+                                            },
+                                            icon = { Icon(Icons.Filled.History, null) }
+                                        )
+                                        NavigationDrawerItem(
+                                            label = { Text("Perfil") },
+                                            selected = destino == Destino.PERFIL,
+                                            onClick = {
+                                                destino = Destino.PERFIL
+                                                scope.launch { drawerState.close() }
+                                            },
+                                            icon = { Icon(Icons.Filled.Person, null) }
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.weight(1f))
+
+                                    Divider()
+                                    NavigationDrawerItem(
+                                        label = { Text("Cerrar sesión") },
+                                        selected = false,
+                                        onClick = {
+                                            scope.launch { drawerState.close() }
+                                            estaLogueado = false
+                                            currentUser  = ""
+                                            destino      = Destino.HABITOS
+                                        },
+                                        icon = { Icon(Icons.Filled.Logout, null) }
                                     )
                                 }
-                                NavigationDrawerItem(
-                                    label = { Text("Hábitos") },
-                                    selected = destino == Destino.HABITOS,
-                                    onClick = {
-                                        destino = Destino.HABITOS
-                                        scope.launch { drawerState.close() }
-                                    },
-                                    icon = { Icon(Icons.Filled.List, null) }
-                                )
-                                NavigationDrawerItem(
-                                    label = { Text("Historial") },
-                                    selected = destino == Destino.HISTORIAL,
-                                    onClick = {
-                                        destino = Destino.HISTORIAL
-                                        scope.launch { drawerState.close() }
-                                    },
-                                    icon = { Icon(Icons.Filled.History, null) }
-                                )
-                                NavigationDrawerItem(
-                                    label = { Text("Perfil") },
-                                    selected = destino == Destino.PERFIL,
-                                    onClick = {
-                                        destino = Destino.PERFIL
-                                        scope.launch { drawerState.close() }
-                                    },
-                                    icon = { Icon(Icons.Filled.Person, null) }
-                                )
                             }
                         }
                     ) {
                         when (destino) {
                             Destino.HABITOS -> {
-                                if (mostrarDialogo) {
+                                if (showAddHabitDialog) {
                                     AlertDialog(
-                                        onDismissRequest = { mostrarDialogo = false },
+                                        onDismissRequest = { showAddHabitDialog = false },
                                         title = { Text("Nuevo Hábito") },
-                                        text = {
+                                        text  = {
                                             TextField(
-                                                value = nuevoNombre,
-                                                onValueChange = { nuevoNombre = it },
+                                                value = newHabitName,
+                                                onValueChange = { newHabitName = it },
                                                 label = { Text("Nombre del hábito") }
                                             )
                                         },
                                         confirmButton = {
                                             TextButton(onClick = {
-                                                if (nuevoNombre.isNotBlank()) {
+                                                if (newHabitName.isNotBlank()) {
                                                     habitos.add(
                                                         Habito(
                                                             id     = habitos.size + 1,
-                                                            nombre = nuevoNombre.trim()
+                                                            nombre = newHabitName.trim()
                                                         )
                                                     )
-                                                    nuevoNombre   = ""
-                                                    mostrarDialogo = false
+                                                    newHabitName      = ""
+                                                    showAddHabitDialog = false
                                                 }
                                             }) { Text("Agregar") }
                                         },
                                         dismissButton = {
                                             TextButton(onClick = {
-                                                nuevoNombre   = ""
-                                                mostrarDialogo = false
+                                                newHabitName = ""
+                                                showAddHabitDialog = false
                                             }) { Text("Cancelar") }
                                         }
                                     )
                                 }
 
                                 PantallaPrincipal(
-                                    habitos           = habitos,
-                                    onAgregarClick    = { mostrarDialogo = true },
+                                    habitos            = habitos,
+                                    onAgregarClick     = { showAddHabitDialog = true },
                                     onToggleCompletado = { agregarAHistorial(it) },
-                                    onOpenDrawer      = { scope.launch { drawerState.open() } }
+                                    onOpenDrawer       = { scope.launch { drawerState.open() } }
                                 )
                             }
 
@@ -185,7 +227,14 @@ class MainActivity : ComponentActivity() {
                     }
 
                 } else {
-                    var usuario by rememberSaveable { mutableStateOf("") }
+                    /* ═════════════════ Login ═════════════════ */
+                    var usuario by remember { mutableStateOf("") }
+                    var error   by remember { mutableStateOf(false) }
+
+                    var showRegisterDialog by remember { mutableStateOf(false) }
+                    var newUserName       by remember { mutableStateOf("") }
+                    var userExists        by remember { mutableStateOf(false) }
+                    var genderSelected    by remember { mutableStateOf("women") } // women / men
 
                     Box(
                         modifier = Modifier
@@ -200,8 +249,7 @@ class MainActivity : ComponentActivity() {
                             Image(
                                 painter = painterResource(id = R.drawable.logo),
                                 contentDescription = "Logo",
-                                modifier = Modifier
-                                    .sizeIn(maxWidth = 200.dp, maxHeight = 200.dp)
+                                modifier = Modifier.sizeIn(maxWidth = 200.dp, maxHeight = 200.dp)
                             )
                         }
 
@@ -212,26 +260,143 @@ class MainActivity : ComponentActivity() {
                                 .padding(vertical = 24.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Text(
-                                text = "Iniciar sesión",
-                                style = MaterialTheme.typography.headlineSmall
-                            )
+                            Text("Iniciar sesión", style = MaterialTheme.typography.headlineSmall)
                             Spacer(Modifier.height(24.dp))
+
                             OutlinedTextField(
                                 value = usuario,
-                                onValueChange = { usuario = it },
-                                placeholder = { Text("Usuario") },
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth()
+                                onValueChange = { usuario = it; error = false },
+                                placeholder  = { Text("Usuario") },
+                                singleLine   = true,
+                                isError      = error,
+                                modifier     = Modifier.fillMaxWidth()
                             )
-                            Spacer(Modifier.height(24.dp))
-                            Button(
-                                onClick = { if (usuario.isNotBlank()) estaLogueado = true },
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                            ) {
-                                Text("Ingresar")
+                            if (error) {
+                                Spacer(Modifier.height(8.dp))
+                                Text("Usuario no registrado", color = MaterialTheme.colorScheme.error)
                             }
+
+                            Spacer(Modifier.height(24.dp))
+
+                            Button(
+                                onClick  = {
+                                    if (allowedUsers.contains(usuario)) {
+                                        /* ── Carga listas ── */
+                                        currentUser = usuario
+                                        if (!userHabitos.containsKey(usuario))
+                                            userHabitos[usuario] = mutableStateListOf()
+                                        if (!userHistorial.containsKey(usuario))
+                                            userHistorial[usuario] = mutableStateListOf()
+
+                                        habitos   = userHabitos[usuario]!!
+                                        historial = userHistorial[usuario]!!
+
+                                        /* ── Carga perfil almacenado ── */
+                                        usuarioState.value =
+                                            userProfiles[usuario] ?: Usuario(nombre = usuario)
+
+                                        estaLogueado = true
+                                        destino      = Destino.HABITOS
+                                    } else error = true
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors   = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                            ) { Text("Ingresar") }
+
+                            Spacer(Modifier.height(12.dp))
+
+                            OutlinedButton(
+                                onClick  = {
+                                    genderSelected   = "women"
+                                    showRegisterDialog = true
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) { Text("Crear usuario") }
+                        }
+
+                        /* ═════════════ Registro ═════════════ */
+                        if (showRegisterDialog) {
+                            AlertDialog(
+                                onDismissRequest = {
+                                    showRegisterDialog = false
+                                    newUserName = ""
+                                    userExists  = false
+                                },
+                                title = { Text("Nuevo usuario") },
+                                text = {
+                                    Column {
+                                        OutlinedTextField(
+                                            value        = newUserName,
+                                            onValueChange = { newUserName = it; userExists = false },
+                                            label        = { Text("Nombre de usuario") },
+                                            singleLine   = true,
+                                            isError      = userExists
+                                        )
+                                        Spacer(Modifier.height(12.dp))
+
+                                        /* ─── Género ─── */
+                                        Text("Género")
+                                        Spacer(Modifier.height(4.dp))
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            RadioButton(
+                                                selected = genderSelected == "women",
+                                                onClick  = { genderSelected = "women" }
+                                            )
+                                            Text("Mujer")
+                                            Spacer(Modifier.width(16.dp))
+                                            RadioButton(
+                                                selected = genderSelected == "men",
+                                                onClick  = { genderSelected = "men" }
+                                            )
+                                            Text("Hombre")
+                                        }
+
+                                        if (userExists) {
+                                            Spacer(Modifier.height(4.dp))
+                                            Text("El usuario ya existe", color = MaterialTheme.colorScheme.error)
+                                        }
+                                    }
+                                },
+                                confirmButton = {
+                                    TextButton(onClick = {
+                                        val name = newUserName.trim()
+                                        if (name.isNotBlank()) {
+                                            if (allowedUsers.contains(name)) {
+                                                userExists = true
+                                            } else {
+                                                /* ── Crea foto aleatoria ── */
+                                                val randomId = Random.nextInt(100)
+                                                val imageUrl = "https://randomuser.me/api/portraits/$genderSelected/$randomId.jpg"
+
+                                                /* ── Actualiza colecciones ── */
+                                                allowedUsers.add(name)
+                                                userHabitos[name]   = mutableStateListOf()
+                                                userHistorial[name] = mutableStateListOf()
+                                                userProfiles[name]  = Usuario(nombre = name, imageUrl = imageUrl)
+
+                                                /* ── Prepara sesión ── */
+                                                currentUser        = name
+                                                habitos            = userHabitos[name]!!
+                                                historial          = userHistorial[name]!!
+                                                usuarioState.value = userProfiles[name]!!
+
+                                                estaLogueado       = true
+                                                destino            = Destino.PERFIL
+                                                showRegisterDialog = false
+                                            }
+                                        }
+                                    }) { Text("Guardar") }
+                                },
+                                dismissButton = {
+                                    TextButton(onClick = {
+                                        showRegisterDialog = false
+                                        newUserName = ""
+                                        userExists  = false
+                                    }) { Text("Cancelar") }
+                                }
+                            )
                         }
                     }
                 }
