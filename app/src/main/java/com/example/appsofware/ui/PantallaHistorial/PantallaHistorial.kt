@@ -26,6 +26,11 @@ fun PantallaHistorial(
         topBar = {
             TopAppBar(
                 title = { Text("Historial") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor            = MaterialTheme.colorScheme.primary,
+                    titleContentColor         = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                ),
                 navigationIcon = {
                     IconButton(onClick = onOpenDrawer) {
                         Icon(Icons.Filled.Menu, contentDescription = "Menú")

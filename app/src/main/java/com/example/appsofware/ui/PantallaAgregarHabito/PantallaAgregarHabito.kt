@@ -11,7 +11,7 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun PantallaAgregarHabito(onLoginExitoso: () -> Unit) {
     var usuario by remember { mutableStateOf(TextFieldValue("")) }
-    var error by remember { mutableStateOf(false) }
+    var error   by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -21,19 +21,24 @@ fun PantallaAgregarHabito(onLoginExitoso: () -> Unit) {
     ) {
         Text("Iniciar sesión", style = MaterialTheme.typography.headlineSmall)
         Spacer(Modifier.height(16.dp))
-        TextField(
+        OutlinedTextField(
             value = usuario,
             onValueChange = {
                 usuario = it
                 error = false
             },
             label = { Text("Usuario") },
-            isError = error
+            isError = error,
+            modifier = Modifier.fillMaxWidth()
         )
         Spacer(Modifier.height(16.dp))
-        Button(onClick = {
-            if (usuario.text == "admin") onLoginExitoso() else error = true
-        }) { Text("Ingresar") }
+        Button(
+            onClick = {
+                if (usuario.text == "admin") onLoginExitoso() else error = true
+            },
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+            modifier = Modifier.fillMaxWidth()
+        ) { Text("Ingresar") }
         if (error) {
             Spacer(Modifier.height(8.dp))
             Text("Usuario incorrecto", color = MaterialTheme.colorScheme.error)

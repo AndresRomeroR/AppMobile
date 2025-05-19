@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,12 +39,12 @@ class MainActivity : ComponentActivity() {
         setContent {
             AppSofwareTheme {
 
-                var estaLogueado by remember { mutableStateOf(false) }
+                var estaLogueado by rememberSaveable { mutableStateOf(false) }
 
                 val drawerState = rememberDrawerState(DrawerValue.Closed)
                 val scope       = rememberCoroutineScope()
 
-                var destino by remember { mutableStateOf(Destino.HABITOS) }
+                var destino by rememberSaveable { mutableStateOf(Destino.HABITOS) }
 
                 val usuarioState: MutableState<Usuario> = remember { mutableStateOf(Usuario()) }
 
@@ -92,7 +93,10 @@ class MainActivity : ComponentActivity() {
                                             .clip(RectangleShape)
                                     )
                                     Spacer(Modifier.height(12.dp))
-                                    Text(usuarioState.value.nombre, style = MaterialTheme.typography.titleMedium)
+                                    Text(
+                                        usuarioState.value.nombre.ifBlank { "Invitado" },
+                                        style = MaterialTheme.typography.titleMedium
+                                    )
                                 }
                                 NavigationDrawerItem(
                                     label = { Text("Hábitos") },
@@ -181,7 +185,7 @@ class MainActivity : ComponentActivity() {
                     }
 
                 } else {
-                    var usuario by remember { mutableStateOf("") }  // <--- estado para el input
+                    var usuario by rememberSaveable { mutableStateOf("") }
 
                     Box(
                         modifier = Modifier
@@ -213,9 +217,9 @@ class MainActivity : ComponentActivity() {
                                 style = MaterialTheme.typography.headlineSmall
                             )
                             Spacer(Modifier.height(24.dp))
-                            TextField(
+                            OutlinedTextField(
                                 value = usuario,
-                                onValueChange = { usuario = it },  // <--- actualiza el estado
+                                onValueChange = { usuario = it },
                                 placeholder = { Text("Usuario") },
                                 singleLine = true,
                                 modifier = Modifier.fillMaxWidth()
@@ -223,7 +227,8 @@ class MainActivity : ComponentActivity() {
                             Spacer(Modifier.height(24.dp))
                             Button(
                                 onClick = { if (usuario.isNotBlank()) estaLogueado = true },
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                             ) {
                                 Text("Ingresar")
                             }

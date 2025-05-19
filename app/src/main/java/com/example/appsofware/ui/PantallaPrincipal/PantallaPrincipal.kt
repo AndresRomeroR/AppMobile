@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -29,6 +30,11 @@ fun PantallaPrincipal(
         topBar = {
             TopAppBar(
                 title = { Text("Mis Hábitos") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor            = MaterialTheme.colorScheme.primary,
+                    titleContentColor         = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                ),
                 navigationIcon = {
                     IconButton(onClick = onOpenDrawer) {
                         Icon(Icons.Filled.Menu, contentDescription = "Menú")
@@ -37,9 +43,10 @@ fun PantallaPrincipal(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = onAgregarClick) {
-                Icon(Icons.Filled.Add, contentDescription = "Agregar")
-            }
+            FloatingActionButton(
+                onClick = onAgregarClick,
+                containerColor = MaterialTheme.colorScheme.secondary
+            ) { Icon(Icons.Filled.Add, contentDescription = "Agregar") }
         }
     ) { padding ->
         LazyColumn(
@@ -51,13 +58,14 @@ fun PantallaPrincipal(
         ) {
             items(habitos, key = { it.id }) { habito ->
                 Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     modifier = Modifier.fillMaxWidth(),
-                    elevation = CardDefaults.cardElevation(4.dp)
+                    elevation = CardDefaults.cardElevation(3.dp)
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp),
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
@@ -77,7 +85,12 @@ fun PantallaPrincipal(
                                         onToggleCompletado(actualizado)
                                     }
                                 }
-                            }
+                            },
+                            colors = CheckboxDefaults.colors(
+                                checkedColor = MaterialTheme.colorScheme.primary,
+                                uncheckedColor = MaterialTheme.colorScheme.outline,
+                                checkmarkColor = MaterialTheme.colorScheme.onPrimary
+                            )
                         )
                     }
                 }
